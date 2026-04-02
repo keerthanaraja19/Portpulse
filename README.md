@@ -64,8 +64,11 @@ Port    State   Service
 📌 Project Structure :
 
 portpulse/
+
 ├── portpulse.py
+
 ├── scan_history.json
+
 └── README.md
 
 
