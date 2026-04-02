@@ -4,14 +4,22 @@ PortPulse is a lightweight and user-friendly network port scanner built using Py
 
 🚀 Features
 
-🔍 Fast multi-threaded port scanning
-🖥️ Clean and intuitive GUI
-📊 Real-time results display
-⏱️ Progress tracking & elapsed time
-⏹️ Start / Stop scan functionality
-📜 Scan history with reload option
-💾 Export results to .txt file
-🛠️ Technologies Used
+ Fast multi-threaded port scanning
+ 
+ Clean and intuitive GUI
+ 
+ Real-time results display
+ 
+ Progress tracking & elapsed time
+ 
+ Start / Stop scan functionality
+ 
+ Scan history with reload option
+ 
+ Export results to .txt file
+
+ 
+Technologies Used
 Python
 Tkinter (GUI)
 Threading Module (for fast scanning)
