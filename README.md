@@ -2,56 +2,56 @@
 
 PortPulse is a lightweight and user-friendly network port scanner built using Python and Tkinter. It helps users identify open ports and running services on a target system through a simple graphical interface.
 
-🚀 Features
+🚀 Features :
 
- Fast multi-threaded port scanning
+    Fast multi-threaded port scanning
  
- Clean and intuitive GUI
+    Clean and intuitive GUI
  
- Real-time results display
+    Real-time results display
  
- Progress tracking & elapsed time
+    Progress tracking & elapsed time
  
- Start / Stop scan functionality
+    Start / Stop scan functionality
  
- Scan history with reload option
+    Scan history with reload option
  
- Export results to .txt file
+    Export results to .txt file
 
  
-Technologies Used
+Technologies Used :
 
-Python
+     Python
 
-Tkinter (GUI)
+     Tkinter (GUI)
 
-Threading Module (for fast scanning)
+     Threading Module (for fast scanning)
 
-GitHub (version control)
-
-
-📦 Installation
-
-git clone https://github.com/your-username/portpulse.git
-cd portpulse
+     GitHub (version control)
 
 
-▶️ Usage
+📦 Installation :
 
-python portpulse.py
-
-Enter target IP address or hostname
-
-Enter start and end port
-
-Click INITIATE SCAN
-
-View results in real-time
-
-Export results if needed
+    git clone https://github.com/your-username/portpulse.git
+    cd portpulse
 
 
-📸 Output Example
+▶️ Usage :
+
+    python portpulse.py
+
+    Enter target IP address or hostname
+
+    Enter start and end port
+
+    Click INITIATE SCAN
+
+    View results in real-time
+
+    Export results if needed
+
+
+📸 Output Example :
 
 Port    State   Service
 22      OPEN    SSH
@@ -61,7 +61,7 @@ Port    State   Service
 443     OPEN    HTTPS
 
 
-📌 Project Structure
+📌 Project Structure :
 
 portpulse/
 ├── portpulse.py
@@ -69,24 +69,24 @@ portpulse/
 └── README.md
 
 
-🎯 Use Cases
+🎯 Use Cases :
 
-Learning network security basics
+    Learning network security basics
 
-Identifying open ports and services
+    Identifying open ports and services
 
-Basic penetration testing practice
+    Basic penetration testing practice
 
-Educational cybersecurity projects
+    Educational cybersecurity projects
 
 
-⚠️ Disclaimer
+⚠️ Disclaimer :
 
-This tool is intended for educational purposes only.
+    This tool is intended for educational purposes only.
 
-Use it only on systems and networks you own or have permission to scan.
+    Use it only on systems and networks you own or have permission to scan.
 
-👩‍💻 Author
+👩‍💻 Author :
 
 Keerthana Raja
 Cybersecurity Enthusiast
