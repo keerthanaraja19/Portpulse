@@ -1,0 +1,313 @@
+import socket
+import threading
+import tkinter as tk
+from tkinter import ttk, filedialog, messagebox
+import queue
+import time
+import json
+
+# -------- CYBER COLORS --------
+BG = "#020617"
+CARD = "#052e2b"
+TEXT = "#22f5ff"
+SUBTEXT = "#67e8f9"
+BORDER = "#00f5ff"
+ACCENT = "#22c55e"
+
+HISTORY_FILE = "scan_history.json"
+
+SERVICES = {
+    21:"FTP",22:"SSH",23:"Telnet",25:"SMTP",
+    53:"DNS",80:"HTTP",110:"POP3",143:"IMAP",
+    443:"HTTPS",3306:"MySQL",3389:"RDP"
+}
+
+# -------- SCANNER --------
+class Scanner:
+    def __init__(self, target, start, end, callback, progress, done):
+        self.target = target
+        self.start = start
+        self.end = end
+        self.callback = callback
+        self.progress = progress
+        self.done = done
+        self.q = queue.Queue()
+        self.total = end - start + 1
+        self.count = 0
+        self.stop_flag = False
+
+    def worker(self):
+        while not self.q.empty() and not self.stop_flag:
+            port = self.q.get()
+            try:
+                s = socket.socket()
+                s.settimeout(0.3)
+                if s.connect_ex((self.target, port)) == 0:
+                    self.callback(port, SERVICES.get(port, "Unknown"))
+                s.close()
+            except:
+                pass
+
+            self.count += 1
+            self.progress(self.count, self.total)
+            self.q.task_done()
+
+    def start_scan(self):
+        for p in range(self.start, self.end+1):
+            self.q.put(p)
+
+        for _ in range(100):
+            threading.Thread(target=self.worker, daemon=True).start()
+
+        self.q.join()
+        if not self.stop_flag:
+            self.done()
+
+    def stop(self):
+        self.stop_flag = True
+
+
+# -------- APP --------
+class App:
+    def __init__(self, root):
+        self.root = root
+        self.root.title("PortPulse")
+        self.root.geometry("1180x560")
+        self.root.configure(bg=BG)
+
+        self.start_time = 0
+        self.timer_running = False
+        self.open_ports = []
+        self.load_history()
+
+        self.build_ui()
+
+    def build_ui(self):
+        header = tk.Frame(self.root, bg=BG)
+        header.pack(fill="x", padx=10, pady=5)
+
+        tk.Label(header, text="PORTPULSE // CYBER INTERFACE",
+                 fg=TEXT, bg=BG,
+                 font=("Consolas", 16, "bold")).pack(side="left")
+
+        self.status_label = tk.Label(header, text="IDLE",
+                                    fg=SUBTEXT, bg=BG)
+        self.status_label.pack(side="right")
+
+        main = tk.Frame(self.root, bg=BG)
+        main.pack(fill="both", expand=True)
+
+        # LEFT PANEL
+        left = tk.Frame(main, bg=CARD, highlightbackground=BORDER, highlightthickness=1)
+        left.place(x=10, y=10, width=260, height=260)
+
+        tk.Label(left, text="SCAN PARAMETERS", fg=TEXT, bg=CARD).pack(pady=5)
+
+        self.target = tk.Entry(left, bg=BG, fg=TEXT, insertbackground=TEXT)
+        self.target.insert(0, "127.0.0.1")
+        self.target.pack(padx=10, pady=5)
+
+        self.start = tk.Entry(left, bg=BG, fg=TEXT)
+        self.start.insert(0, "1")
+        self.start.pack(padx=10)
+
+        self.end = tk.Entry(left, bg=BG, fg=TEXT)
+        self.end.insert(0, "1024")
+        self.end.pack(padx=10)
+
+        tk.Button(left, text="INITIATE SCAN", bg="#083344", fg=TEXT, command=self.start_scan).pack(pady=5)
+        tk.Button(left, text="STOP", bg="#083344", fg=TEXT, command=self.stop_scan).pack(pady=5)
+        tk.Button(left, text="DOWNLOAD", bg="#083344", fg=TEXT, command=self.export_results).pack(pady=5)
+
+        # RIGHT PANEL
+        right = tk.Frame(main, bg=CARD, highlightbackground=BORDER, highlightthickness=1)
+        right.place(x=280, y=10, width=620, height=260)
+
+        stats = tk.Frame(right, bg=CARD)
+        stats.pack(pady=10)
+
+        self.elapsed = self.stat(stats, "TIME", "0.0s")
+        self.scanned = self.stat(stats, "SCANNED", "0")
+        self.open = self.stat(stats, "OPEN", "0")
+
+        self.progress = ttk.Progressbar(right, length=600)
+        self.progress.pack(pady=10)
+
+        # HISTORY PANEL (RIGHT SIDE)
+        history_frame = tk.Frame(main, bg=CARD, highlightbackground=BORDER, highlightthickness=1)
+        history_frame.place(x=910, y=10, width=250, height=530)
+
+        tk.Label(history_frame, text="SCAN HISTORY",
+                 fg=TEXT, bg=CARD,
+                 font=("Consolas", 12, "bold")).pack(pady=10)
+
+        self.history_list = tk.Listbox(history_frame,
+                                       bg=BG,
+                                       fg=SUBTEXT,
+                                       selectbackground="#083344",
+                                       font=("Consolas", 10),
+                                       borderwidth=0)
+
+        self.history_list.pack(fill="both", expand=True, padx=10, pady=10)
+        self.history_list.bind("<Double-1>", self.load_history_item)
+
+        # TABLE
+        bottom = tk.Frame(main, bg=CARD, highlightbackground=BORDER, highlightthickness=1)
+        bottom.place(x=10, y=280, width=880, height=260)
+
+        columns = ("Port", "State", "Service")
+        self.tree = ttk.Treeview(bottom, columns=columns, show="headings")
+
+        for col in columns:
+            self.tree.heading(col, text=col)
+            self.tree.column(col, anchor="center")
+
+        self.tree.pack(fill="both", expand=True)
+
+        style = ttk.Style()
+        style.theme_use("default")
+
+        style.configure("Treeview",
+            background=BG,
+            foreground=TEXT,
+            fieldbackground=BG
+        )
+
+        style.configure("Treeview.Heading",
+            background=CARD,
+            foreground=TEXT,
+            font=("Consolas", 10, "bold")
+        )
+
+        self.tree.tag_configure("open", foreground=ACCENT)
+
+        self.show_history()
+
+    def stat(self, parent, title, value):
+        box = tk.Frame(parent, bg=BG, highlightbackground=BORDER, highlightthickness=1)
+        box.pack(side="left", padx=10, ipadx=10, ipady=5)
+
+        tk.Label(box, text=title, fg=SUBTEXT, bg=BG).pack()
+        val = tk.Label(box, text=value, fg=TEXT, bg=BG)
+        val.pack()
+        return val
+
+    # -------- HISTORY --------
+    def load_history(self):
+        try:
+            with open(HISTORY_FILE, "r") as f:
+                self.history = json.load(f)
+        except:
+            self.history = []
+
+    def save_history(self):
+        entry = {
+            "target": self.target.get(),
+            "ports": self.open_ports,
+            "time": time.ctime()
+        }
+        self.history.append(entry)
+        with open(HISTORY_FILE, "w") as f:
+            json.dump(self.history, f)
+
+    def show_history(self):
+        self.history_list.delete(0, tk.END)
+        for h in self.history[-5:]:
+            text = f"{h['target']} ({len(h['ports'])} ports)"
+            self.history_list.insert(tk.END, text)
+
+    def load_history_item(self, event):
+        selection = self.history_list.curselection()
+        if not selection:
+            return
+
+        index = selection[0]
+        h = self.history[-5:][index]
+
+        self.tree.delete(*self.tree.get_children())
+
+        for port in h["ports"]:
+            service = SERVICES.get(port, "Unknown")
+            self.tree.insert("", "end",
+                             values=(port, "OPEN", service),
+                             tags=("open",))
+
+    # -------- EXPORT --------
+    def export_results(self):
+        if not self.open_ports:
+            messagebox.showinfo("Info", "No results to export")
+            return
+
+        file = filedialog.asksaveasfilename(defaultextension=".txt")
+        if not file:
+            return
+
+        with open(file, "w") as f:
+            f.write(f"PortPulse Results - {time.ctime()}\n")
+            f.write(f"Target: {self.target.get()}\n\n")
+
+            for port in self.open_ports:
+                service = SERVICES.get(port, "Unknown")
+                f.write(f"[OPEN] Port {port} - {service}\n")
+
+        messagebox.showinfo("Saved", "Results exported")
+
+    # -------- SCAN --------
+    def start_scan(self):
+        self.tree.delete(*self.tree.get_children())
+        self.open_ports = []
+        self.start_time = time.time()
+        self.timer_running = True
+
+        self.status_label.config(text="SCANNING")
+
+        self.scanner = Scanner(
+            self.target.get(),
+            int(self.start.get()),
+            int(self.end.get()),
+            self.add_result,
+            self.update_progress,
+            self.scan_done
+        )
+
+        threading.Thread(target=self.scanner.start_scan).start()
+        self.update_timer()
+
+    def stop_scan(self):
+        if hasattr(self, "scanner"):
+            self.scanner.stop()
+            self.timer_running = False
+            self.status_label.config(text="STOPPED")
+
+    def update_timer(self):
+        if not self.timer_running:
+            return
+
+        elapsed = round(time.time() - self.start_time, 1)
+        self.elapsed.config(text=f"{elapsed}s")
+
+        self.root.after(500, self.update_timer)
+
+    def update_progress(self, count, total):
+        self.progress["maximum"] = total
+        self.progress["value"] = count
+        self.scanned.config(text=str(count))
+
+    def add_result(self, port, service):
+        self.open_ports.append(port)
+        self.open.config(text=str(len(self.open_ports)))
+
+        self.tree.insert("", "end",
+                         values=(port, "OPEN", service),
+                         tags=("open",))
+
+    def scan_done(self):
+        self.status_label.config(text="COMPLETE")
+        self.timer_running = False
+        self.save_history()
+        self.show_history()
+
+# -------- RUN --------
+root = tk.Tk()
+app = App(root)
+root.mainloop()
